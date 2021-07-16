@@ -9,6 +9,7 @@
 #ifndef __ODC__CustomCommands
 #define __ODC__CustomCommands
 
+#include <cstdint>
 #include <fairmq/States.h>
 
 #include <memory>
@@ -20,6 +21,7 @@
 
 namespace odc::cc
 {
+    constexpr std::uint16_t protocolVersion = 1;
 
     enum class Format : int
     {
@@ -43,6 +45,7 @@ namespace odc::cc
         state_change_exiting_received, // args: { }
         get_properties,                // args: { request_id, property_query }
         set_properties,                // args: { request_id, properties }
+        check_peer,                    // args: { protocol_version }
         subscription_heartbeat,        // args: { interval }
 
         current_state,               // args: { device_id, current_state }
@@ -52,7 +55,8 @@ namespace odc::cc
         state_change_unsubscription, // args: { device_id, task_id, Result }
         state_change,                // args: { device_id, task_id, last_state, current_state }
         properties,                  // args: { device_id, request_id, Result, properties }
-        properties_set               // args: { device_id, request_id, Result }
+        properties_set,              // args: { device_id, request_id, Result }
+        peer_state                   // args: { device_id, protocol_version }
     };
 
     struct Cmd
@@ -206,6 +210,27 @@ namespace odc::cc
       private:
         std::size_t fRequestId;
         std::vector<std::pair<std::string, std::string>> fProperties;
+    };
+
+    struct CheckPeer : Cmd
+    {
+        CheckPeer(std::uint16_t _protocolVersion = protocolVersion)
+            : Cmd(Type::check_peer)
+            , fProtocolVersion(_protocolVersion)
+        {
+        }
+
+        auto GetProtocolVersion() const -> std::uint16_t
+        {
+            return fProtocolVersion;
+        }
+        auto SetProtocolVersion(std::uint16_t protocolVersion) -> void
+        {
+            fProtocolVersion = protocolVersion;
+        }
+
+      private:
+        std::uint16_t fProtocolVersion;
     };
 
     struct SubscriptionHeartbeat : Cmd
@@ -585,6 +610,37 @@ namespace odc::cc
         std::string fDeviceId;
         std::size_t fRequestId;
         Result fResult;
+    };
+
+    struct PeerState : Cmd
+    {
+        PeerState(std::string deviceId, std::uint16_t _protocolVersion = protocolVersion)
+            : Cmd(Type::peer_state)
+            , fDeviceId(std::move(deviceId))
+            , fProtocolVersion(_protocolVersion)
+        {
+        }
+
+        auto GetDeviceId() const -> std::string
+        {
+            return fDeviceId;
+        }
+        auto SetDeviceId(std::string deviceId) -> void
+        {
+            fDeviceId = std::move(deviceId);
+        }
+        auto GetProtocolVersion() const -> std::uint16_t
+        {
+            return fProtocolVersion;
+        }
+        auto SetProtocolVersion(std::uint16_t protocolVersion) -> void
+        {
+            fProtocolVersion = protocolVersion;
+        }
+
+      private:
+        std::string fDeviceId;
+        std::uint16_t fProtocolVersion;
     };
 
     template <typename C, typename... Args>

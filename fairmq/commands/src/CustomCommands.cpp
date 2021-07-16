@@ -25,7 +25,7 @@ namespace odc::cc
 
     array<string, 2> resultNames = { { "Ok", "Failure" } };
 
-    array<string, 17> typeNames = { { "CheckState",
+    array<string, 19> typeNames = { { "CheckState",
                                       "ChangeState",
                                       "DumpConfig",
                                       "SubscribeToStateChange",
@@ -33,6 +33,7 @@ namespace odc::cc
                                       "StateChangeExitingReceived",
                                       "GetProperties",
                                       "SetProperties",
+                                      "CheckPeer",
                                       "SubscriptionHeartbeat",
 
                                       "CurrentState",
@@ -42,7 +43,8 @@ namespace odc::cc
                                       "StateChangeUnsubscription",
                                       "StateChange",
                                       "Properties",
-                                      "PropertiesSet" } };
+                                      "PropertiesSet",
+                                      "PeerState" } };
 
     array<fair::mq::State, 16> fbStateToMQState = { { fair::mq::State::Undefined,
                                                       fair::mq::State::Ok,
@@ -104,7 +106,7 @@ namespace odc::cc
                                                              FBTransition_End,
                                                              FBTransition_ErrorFound } };
 
-    array<FBCmd, 17> typeToFBCmd = { { FBCmd::FBCmd_check_state,
+    array<FBCmd, 19> typeToFBCmd = { { FBCmd::FBCmd_check_state,
                                        FBCmd::FBCmd_change_state,
                                        FBCmd::FBCmd_dump_config,
                                        FBCmd::FBCmd_subscribe_to_state_change,
@@ -112,6 +114,7 @@ namespace odc::cc
                                        FBCmd::FBCmd_state_change_exiting_received,
                                        FBCmd::FBCmd_get_properties,
                                        FBCmd::FBCmd_set_properties,
+                                       FBCmd::FBCmd_check_peer,
                                        FBCmd::FBCmd_subscription_heartbeat,
                                        FBCmd::FBCmd_current_state,
                                        FBCmd::FBCmd_transition_status,
@@ -120,9 +123,10 @@ namespace odc::cc
                                        FBCmd::FBCmd_state_change_unsubscription,
                                        FBCmd::FBCmd_state_change,
                                        FBCmd::FBCmd_properties,
-                                       FBCmd::FBCmd_properties_set } };
+                                       FBCmd::FBCmd_properties_set,
+                                       FBCmd::FBCmd_peer_state } };
 
-    array<Type, 17> fbCmdToType = { { Type::check_state,
+    array<Type, 19> fbCmdToType = { { Type::check_state,
                                       Type::change_state,
                                       Type::dump_config,
                                       Type::subscribe_to_state_change,
@@ -130,6 +134,7 @@ namespace odc::cc
                                       Type::state_change_exiting_received,
                                       Type::get_properties,
                                       Type::set_properties,
+                                      Type::check_peer,
                                       Type::subscription_heartbeat,
                                       Type::current_state,
                                       Type::transition_status,
@@ -138,7 +143,8 @@ namespace odc::cc
                                       Type::state_change_unsubscription,
                                       Type::state_change,
                                       Type::properties,
-                                      Type::properties_set } };
+                                      Type::properties_set,
+                                      Type::peer_state } };
 
     fair::mq::State GetMQState(const FBState state)
     {
@@ -251,6 +257,13 @@ namespace odc::cc
                     cmdBuilder->add_properties(props);
                 }
                 break;
+                case Type::check_peer:
+                {
+                    auto _cmd = static_cast<CheckPeer&>(*cmd);
+                    cmdBuilder = make_unique<FBCommandBuilder>(fbb);
+                    cmdBuilder->add_protocol_version(_cmd.GetProtocolVersion());
+                }
+                break;
                 case Type::subscription_heartbeat:
                 {
                     auto _cmd = static_cast<SubscriptionHeartbeat&>(*cmd);
@@ -351,6 +364,15 @@ namespace odc::cc
                     cmdBuilder->add_result(GetFBResult(_cmd.GetResult()));
                 }
                 break;
+                case Type::peer_state:
+                {
+                    auto _cmd = static_cast<PeerState&>(*cmd);
+                    auto deviceId = fbb.CreateString(_cmd.GetDeviceId());
+                    cmdBuilder = make_unique<FBCommandBuilder>(fbb);
+                    cmdBuilder->add_device_id(deviceId);
+                    cmdBuilder->add_protocol_version(_cmd.GetProtocolVersion());
+                }
+                break;
                 default:
                     throw CommandFormatError("unrecognized command type given to odc::cc::Cmds::Serialize()");
                     break;
@@ -447,6 +469,9 @@ namespace odc::cc
                     fCmds.emplace_back(make<SetProperties>(cmdPtr.request_id(), properties));
                 }
                 break;
+                case FBCmd_check_peer:
+                    fCmds.emplace_back(make<CheckPeer>(cmdPtr.protocol_version()));
+                    break;
                 case FBCmd_subscription_heartbeat:
                     fCmds.emplace_back(make<SubscriptionHeartbeat>(cmdPtr.interval()));
                     break;
@@ -493,6 +518,9 @@ namespace odc::cc
                 case FBCmd_properties_set:
                     fCmds.emplace_back(make<PropertiesSet>(
                         cmdPtr.device_id()->str(), cmdPtr.request_id(), GetResult(cmdPtr.result())));
+                    break;
+                case FBCmd_peer_state:
+                    fCmds.emplace_back(make<PeerState>(cmdPtr.device_id()->str(), cmdPtr.protocol_version()));
                     break;
                 default:
                     throw CommandFormatError("unrecognized command type given to odc::cc::Cmds::Deserialize()");

@@ -32,6 +32,7 @@ BOOST_AUTO_TEST_CASE(construction)
     Cmds stateChangeExitingReceivedCmds(make<StateChangeExitingReceived>());
     Cmds getPropertiesCmds(make<GetProperties>(66, "k[12]"));
     Cmds setPropertiesCmds(make<SetProperties>(42, props));
+    Cmds checkPeerCmds(make<CheckPeer>());
     Cmds subscriptionHeartbeatCmds(make<SubscriptionHeartbeat>(60000));
     Cmds currentStateCmds(make<CurrentState>("somedeviceid", State::Running));
     Cmds transitionStatusCmds(
@@ -42,6 +43,7 @@ BOOST_AUTO_TEST_CASE(construction)
     Cmds stateChangeCmds(make<StateChange>("somedeviceid", 123456, State::Running, State::Ready));
     Cmds propertiesCmds(make<Properties>("somedeviceid", 66, Result::Ok, props));
     Cmds propertiesSetCmds(make<PropertiesSet>("somedeviceid", 42, Result::Ok));
+    Cmds peerStateCmds(make<PeerState>("somedeviceid"));
 
     BOOST_TEST(checkStateCmds.At(0).GetType() == Type::check_state);
     BOOST_TEST(changeStateCmds.At(0).GetType() == Type::change_state);
@@ -57,6 +59,8 @@ BOOST_AUTO_TEST_CASE(construction)
     BOOST_TEST(setPropertiesCmds.At(0).GetType() == Type::set_properties);
     BOOST_TEST(static_cast<SetProperties&>(setPropertiesCmds.At(0)).GetRequestId() == 42);
     BOOST_TEST(static_cast<SetProperties&>(setPropertiesCmds.At(0)).GetProps() == props);
+    BOOST_TEST(checkPeerCmds.At(0).GetType() == Type::check_peer);
+    BOOST_TEST(static_cast<CheckPeer&>(checkPeerCmds.At(0)).GetProtocolVersion() == protocolVersion);
     BOOST_TEST(subscriptionHeartbeatCmds.At(0).GetType() == Type::subscription_heartbeat);
     BOOST_TEST(static_cast<SubscriptionHeartbeat&>(subscriptionHeartbeatCmds.At(0)).GetInterval() == 60000);
     BOOST_TEST(currentStateCmds.At(0).GetType() == Type::current_state);
@@ -95,6 +99,9 @@ BOOST_AUTO_TEST_CASE(construction)
     BOOST_TEST(static_cast<PropertiesSet&>(propertiesSetCmds.At(0)).GetDeviceId() == "somedeviceid");
     BOOST_TEST(static_cast<PropertiesSet&>(propertiesSetCmds.At(0)).GetRequestId() == 42);
     BOOST_TEST(static_cast<PropertiesSet&>(propertiesSetCmds.At(0)).GetResult() == Result::Ok);
+    BOOST_TEST(peerStateCmds.At(0).GetType() == Type::peer_state);
+    BOOST_TEST(static_cast<PeerState&>(peerStateCmds.At(0)).GetDeviceId() == "somedeviceid");
+    BOOST_TEST(static_cast<PeerState&>(peerStateCmds.At(0)).GetProtocolVersion() == protocolVersion);
 }
 
 void fillCommands(Cmds& cmds)
@@ -109,6 +116,7 @@ void fillCommands(Cmds& cmds)
     cmds.Add<StateChangeExitingReceived>();
     cmds.Add<GetProperties>(66, "k[12]");
     cmds.Add<SetProperties>(42, props);
+    cmds.Add<CheckPeer>();
     cmds.Add<SubscriptionHeartbeat>(60000);
     cmds.Add<CurrentState>("somedeviceid", State::Running);
     cmds.Add<TransitionStatus>("somedeviceid", 123456, Result::Ok, Transition::Stop, State::Running);
@@ -118,11 +126,12 @@ void fillCommands(Cmds& cmds)
     cmds.Add<StateChange>("somedeviceid", 123456, State::Running, State::Ready);
     cmds.Add<Properties>("somedeviceid", 66, Result::Ok, props);
     cmds.Add<PropertiesSet>("somedeviceid", 42, Result::Ok);
+    cmds.Add<PeerState>("somedeviceid");
 }
 
 void checkCommands(Cmds& cmds)
 {
-    BOOST_TEST(cmds.Size() == 17);
+    BOOST_TEST(cmds.Size() == 19);
 
     int count = 0;
     auto const props(std::vector<std::pair<std::string, std::string>>({ { "k1", "v1" }, { "k2", "v2" } }));
@@ -160,6 +169,10 @@ void checkCommands(Cmds& cmds)
                 ++count;
                 BOOST_TEST(static_cast<SetProperties&>(*cmd).GetRequestId() == 42);
                 BOOST_TEST(static_cast<SetProperties&>(*cmd).GetProps() == props);
+                break;
+            case Type::check_peer:
+                ++count;
+                BOOST_TEST(static_cast<CheckPeer&>(*cmd).GetProtocolVersion() == protocolVersion);
                 break;
             case Type::subscription_heartbeat:
                 ++count;
@@ -215,13 +228,18 @@ void checkCommands(Cmds& cmds)
                 BOOST_TEST(static_cast<PropertiesSet&>(*cmd).GetRequestId() == 42);
                 BOOST_TEST(static_cast<PropertiesSet&>(*cmd).GetResult() == Result::Ok);
                 break;
+            case Type::peer_state:
+                ++count;
+                BOOST_TEST(static_cast<PeerState&>(*cmd).GetDeviceId() == "somedeviceid");
+                BOOST_TEST(static_cast<PeerState&>(*cmd).GetProtocolVersion() == protocolVersion);
+                break;
             default:
                 BOOST_TEST(false);
                 break;
         }
     }
 
-    BOOST_TEST(count == 17);
+    BOOST_TEST(count == 19);
 }
 
 BOOST_AUTO_TEST_CASE(serialization_binary)
