@@ -64,8 +64,10 @@ struct Processor : fair::mq::Device
     }
 };
 
-void addCustomOptions(bpo::options_description& /*options*/)
+void addCustomOptions(bpo::options_description& options)
 {
+    options.add_options()(
+        "fake-protocol-version", bpo::value<int>()->default_value(0), "Fake protocol version for testing purposes");
 }
 
 std::unique_ptr<fair::mq::Device> getDevice(fair::mq::ProgOptions& /*config*/)

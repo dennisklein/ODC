@@ -154,6 +154,15 @@ BOOST_AUTO_TEST_CASE(construction2)
     Topology topo(f.mIoContext.get_executor(), f.mDDSTopo, f.mDDSSession);
 }
 
+BOOST_AUTO_TEST_CASE(protocol_version)
+{
+    BOOST_REQUIRE(framework::master_test_suite().argc >= 3);
+    BOOST_REQUIRE_EQUAL(framework::master_test_suite().argv[1], "--topo-file");
+    TopologyFixture f(framework::master_test_suite().argv[2]);
+
+    Topology topo(f.mDDSTopo, f.mDDSSession);
+}
+
 BOOST_AUTO_TEST_CASE(async_change_state)
 {
     BOOST_REQUIRE(framework::master_test_suite().argc >= 3);
